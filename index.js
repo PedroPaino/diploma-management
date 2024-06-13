@@ -1,39 +1,34 @@
-const { MongoClient } = require('mongodb');
+const mongoose = require('mongoose');
+const Diploma = require('./models/Diploma');
+
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log("Mongoose connected"))
+    .catch(err => console.error("MongoDB connection error:", err));
 
 async function main() {
-  const uri = "mongodb+srv://pedropaino:20032005@qrcode.plq0dcb.mongodb.net/?retryWrites=true&w=majority&appName=QRCODE";
-  const client = new MongoClient(uri);
+    try {
+        // Adicionar um diploma
+        const diplomaDoc = new Diploma({
+            nome: "Maria Silva",
+            curso: "Engenharia de Software",
+            dataConclusao: new Date("2024-06-15"),
+            valid: true
+        });
 
-  try {
-    // Conectar ao MongoDB
-    await client.connect();
-    console.log("Connected to MongoDB");
+        const result = await diplomaDoc.save();
+        console.log(`Diploma inserido com o _id: ${result._id}`);
 
-    const database = client.db("nomeDoBanco");
-    const diplomas = database.collection("diplomas");
+        // Buscar um diploma
+        const foundDiploma = await Diploma.findById(result._id);
+        console.log("Diploma encontrado:", foundDiploma);
 
-    // Adicionar um diploma
-    const diplomaDoc = {
-      nome: "Maria Silva",
-      curso: "Engenharia de Software",
-      dataConclusao: new Date("2024-06-15"),
-      valid: true
-    };
-
-    const result = await diplomas.insertOne(diplomaDoc);
-    console.log(`Diploma inserido com o _id: ${result.insertedId}`);
-
-    // Buscar um diploma
-    const query = { _id: result.insertedId };
-    const diploma = await diplomas.findOne(query);
-    console.log("Diploma encontrado:", diploma);
-
-  } catch (e) {
-    console.error(e);
-  } finally {
-    // Fechar a conexão com o MongoDB
-    await client.close();
-  }
+    } catch (e) {
+        console.error("Error during database operations:", e);
+    } finally {
+        // Fechar a conexão com o MongoDB
+        await mongoose.disconnect();
+        console.log("Mongoose disconnected");
+    }
 }
 
 main();

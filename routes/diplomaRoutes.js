@@ -1,6 +1,7 @@
 const express = require('express');
+const { body, validationResult } = require('express-validator');
 const router = express.Router();
-const Diploma = require('../models/Diploma'); // Ajuste o caminho conforme necessário
+const Diploma = require('../models/Diploma');
 const QRCode = require('qrcode');
 
 // Rota para gerar QR Code
@@ -13,7 +14,8 @@ router.get('/:diplomaId/qr', async (req, res) => {
         res.status(500).json({ message: "Failed to generate QR Code" });
     }
 });
-// Supondo que o modelo `Diploma` já está definido e inclui um campo de validade
+
+// Validar diploma
 router.get('/validate/:diplomaId', async (req, res) => {
     const diploma = await Diploma.findById(req.params.diplomaId);
     if (diploma) {
@@ -24,10 +26,17 @@ router.get('/validate/:diplomaId', async (req, res) => {
     }
 });
 
-router.post('/', async (req, res) => {
-    if (!req.body.studentName || !req.body.course || !req.body.completionDate) {
-        return res.status(400).json({ message: "All fields are required" });
+// Adicionar diploma com validação
+router.post('/', [
+    body('studentName').not().isEmpty().withMessage('Student name is required'),
+    body('course').not().isEmpty().withMessage('Course is required'),
+    body('completionDate').isISO8601().withMessage('Completion date must be a valid date')
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
+
     try {
         const newDiploma = new Diploma(req.body);
         const result = await newDiploma.save();
@@ -38,17 +47,18 @@ router.post('/', async (req, res) => {
     }
 });
 
-
+// Listar todos os diplomas
 router.get('/', async (req, res) => {
     try {
-        const diploma = await Diploma.find({});
-        res.json(diploma);
+        const diplomas = await Diploma.find({});
+        res.json(diplomas);
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: "Error fetching diplomas" });
     }
 });
 
+// Atualizar diploma
 router.put('/:id', async (req, res) => {
     try {
         const result = await Diploma.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -62,6 +72,7 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+// Deletar diploma
 router.delete('/:id', async (req, res) => {
     try {
         const result = await Diploma.findByIdAndDelete(req.params.id);
